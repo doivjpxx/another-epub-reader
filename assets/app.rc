@@ -1,0 +1,26 @@
+1 ICON "app.ico"
+
+1 VERSIONINFO
+FILEVERSION 0,1,0,0
+PRODUCTVERSION 0,1,0,0
+FILEOS 0x40004
+FILETYPE 0x1
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904b0"
+    BEGIN
+      VALUE "CompanyName", "Another Epub Reader"
+      VALUE "FileDescription", "Another Epub Reader"
+      VALUE "FileVersion", "0.1.0"
+      VALUE "InternalName", "another-epub-reader"
+      VALUE "OriginalFilename", "another-epub-reader.exe"
+      VALUE "ProductName", "Another Epub Reader"
+      VALUE "ProductVersion", "0.1.0"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x409, 1200
+  END
+END

@@ -1,0 +1,19 @@
+# Rust build output
+/target/
+**/target/
+**/*.rs.bk
+
+# Local cargo cache if someone uses a repo-local CARGO_HOME
+/.cargo-home/
+
+# Build artifacts / captured screenshots / portable builds
+/artifacts/
+/dist/
+*.log
+
+# Downloaded real-world EPUB test books (the committed fixtures are synthetic)
+/tests/fixtures/downloaded/
+
+# OS junk
+Thumbs.db
+.DS_Store

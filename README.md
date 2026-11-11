@@ -30,6 +30,8 @@ cargo test
 The first build takes a few minutes. The release executable is
 `target\release\another-epub-reader.exe`.
 
+Prebuilt installers (`.msi`, setup `.exe`) and a portable `.exe` are attached to the Releases page.
+
 ## Usage
 
 Open a book with the button, `Ctrl+O`, or by dragging an `.epub` file onto the window. Books you have

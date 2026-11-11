@@ -17,3 +17,8 @@
 # OS junk
 Thumbs.db
 .DS_Store
+
+# Installer build intermediates
+*.wixobj
+*.wixpdb
+

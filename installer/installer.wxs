@@ -14,7 +14,9 @@
     <MajorUpgrade DowngradeErrorMessage="A newer version of Another Epub Reader is already installed." />
     <MediaTemplate EmbedCab="yes" />
 
-    <Property Id="ARPNOMODIFY" Value="1" />
+    <!-- ARPNOMODIFY must not be declared here: WixUI_Minimal (WixUIExtension, referenced below)
+         already sets it, and declaring it twice makes light.exe fail with
+         "LGHT0091: Duplicate symbol 'Property:ARPNOMODIFY'". ARPNOREPAIR is ours to set. -->
     <Property Id="ARPNOREPAIR" Value="1" />
 
     <Directory Id="TARGETDIR" Name="SourceDir">

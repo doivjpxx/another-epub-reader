@@ -44,6 +44,8 @@ pub enum LandingAction {
     RemoveRecent(PathBuf),
     /// Dismiss the shared error banner.
     DismissError,
+    /// Show the About overlay (version / build toolchain / packages).
+    ShowAbout,
 }
 
 pub struct Landing {
@@ -77,6 +79,9 @@ impl Landing {
             }
             LandingAction::DismissError => {
                 root.update(cx, |root, cx| root.dismiss_error(cx));
+            }
+            LandingAction::ShowAbout => {
+                root.update(cx, |root, cx| root.show_about(cx));
             }
         }
     }
@@ -202,9 +207,28 @@ impl Landing {
             .child(div().flex_1().min_h(px(24.)))
             .child(
                 div()
-                    .text_size(px(16.))
-                    .text_color(color(0x999999))
-                    .child("Another Epub Reader"),
+                    .flex()
+                    .flex_col()
+                    .items_center()
+                    .gap(px(4.))
+                    .child(
+                        div()
+                            .text_size(px(16.))
+                            .text_color(color(0x999999))
+                            .child("Another Epub Reader"),
+                    )
+                    .child(
+                        div()
+                            .id("landing-about")
+                            .text_size(px(13.))
+                            .text_color(color(0x00c0b8))
+                            .cursor_pointer()
+                            .hover(|style| style.underline())
+                            .on_click(cx.listener(|this, event: &ClickEvent, window, cx| {
+                                this.on_action_click(LandingAction::ShowAbout, event, window, cx)
+                            }))
+                            .child("About"),
+                    ),
             )
             .into_any_element()
     }

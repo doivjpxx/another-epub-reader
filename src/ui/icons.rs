@@ -36,6 +36,11 @@ pub fn gear_icon(color: Hsla) -> AnyElement {
     glyph("⚙", 22.0, color)
 }
 
+/// ⓘ — About overlay trigger.
+pub fn info_icon(color: Hsla) -> AnyElement {
+    glyph("ⓘ", 22.0, color)
+}
+
 /// × — close book (returns to landing).
 pub fn close_icon(color: Hsla) -> AnyElement {
     glyph("×", 26.0, color)

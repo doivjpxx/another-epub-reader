@@ -11,8 +11,8 @@ use crate::ui::landing::Landing;
 use crate::ui::reader::Reader;
 use gpui::prelude::*;
 use gpui::{
-    AnyElement, App, Context, Entity, ExternalPaths, FocusHandle, Focusable, Hsla, Render, Window,
-    div, linear_color_stop, linear_gradient, px, rgb,
+    AnyElement, App, ClickEvent, Context, Entity, ExternalPaths, FocusHandle, Focusable, Hsla,
+    Image, ImageFormat, Render, Window, div, linear_color_stop, linear_gradient, px, rgb,
 };
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -20,6 +20,9 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 gpui::actions!(epub_reader_app, [PrevChapter, NextChapter, Dismiss, OpenBook]);
+
+/// App icon (the PNG embedded as the executable's Windows resource) used by the About overlay.
+const ABOUT_ICON_PNG: &[u8] = include_bytes!("../assets/icon.png");
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Screen {
@@ -44,6 +47,10 @@ pub struct Root {
     pub persist_error: Option<String>,
     /// Last title pushed to the platform window (avoids redundant platform calls per frame).
     window_title: Option<String>,
+    /// True while the About overlay is visible (opened from the landing footer or the reader bar).
+    about_open: bool,
+    /// App icon shown in the About card; decoded once when the root is created.
+    about_logo: Arc<Image>,
 }
 
 impl Root {
@@ -53,6 +60,14 @@ impl Root {
 
         let weak = cx.weak_entity();
         let landing = cx.new(move |_| Landing::new(weak));
+
+        // Debug-only initial UI state hook, mirroring `ui::reader::debug_initial_ui_state`:
+        // `EPUB_READER_UI_DEBUG=about` opens the About overlay on start so the scripted screenshot
+        // verification can capture it without synthetic mouse input. No effect in release builds.
+        #[cfg(debug_assertions)]
+        let about_open = std::env::var("EPUB_READER_UI_DEBUG").ok().as_deref() == Some("about");
+        #[cfg(not(debug_assertions))]
+        let about_open = false;
 
         Self {
             state,
@@ -66,6 +81,8 @@ impl Root {
             loading: false,
             persist_error: None,
             window_title: None,
+            about_open,
+            about_logo: Arc::new(Image::from_bytes(ImageFormat::Png, ABOUT_ICON_PNG.to_vec())),
         }
     }
 
@@ -94,6 +111,25 @@ impl Root {
         self.error = None;
         self.persist_error = None;
         cx.notify();
+    }
+
+    /// Show the About overlay (version / build toolchain / direct packages).
+    ///
+    /// Called from the landing footer and from the reader's ⓘ button. It must not update the
+    /// `Reader` entity: when invoked from a reader click handler the reader is already leased,
+    /// and a nested `Entity::update` on the same GPUI entity panics (the reader closes its own
+    /// settings popover before calling this).
+    pub fn show_about(&mut self, cx: &mut Context<Self>) {
+        self.about_open = true;
+        cx.notify();
+    }
+
+    /// Hide the About overlay (× button, backdrop click, or Esc).
+    pub fn close_about(&mut self, cx: &mut Context<Self>) {
+        if self.about_open {
+            self.about_open = false;
+            cx.notify();
+        }
     }
 
     pub fn set_theme(&mut self, theme: Theme, cx: &mut Context<Self>) {
@@ -283,6 +319,9 @@ impl Root {
     }
 
     fn on_prev(&mut self, _: &PrevChapter, window: &mut Window, cx: &mut Context<Self>) {
+        if self.about_open {
+            return;
+        }
         if let Some(reader) = self.reader.clone() {
             reader.update(cx, |reader, cx| reader.prev_chapter(window, cx));
             self.persist_reader_position(&reader, cx);
@@ -290,6 +329,9 @@ impl Root {
     }
 
     fn on_next(&mut self, _: &NextChapter, window: &mut Window, cx: &mut Context<Self>) {
+        if self.about_open {
+            return;
+        }
         if let Some(reader) = self.reader.clone() {
             reader.update(cx, |reader, cx| reader.next_chapter(window, cx));
             self.persist_reader_position(&reader, cx);
@@ -305,6 +347,11 @@ impl Root {
     }
 
     fn on_dismiss(&mut self, _: &Dismiss, _window: &mut Window, cx: &mut Context<Self>) {
+        // The About overlay is modal: Esc closes it before anything beneath it.
+        if self.about_open {
+            self.close_about(cx);
+            return;
+        }
         // Esc closes the settings popover; on the landing screen it dismisses the error banner.
         // The reader registers the same action while its own view is in the dispatch path, but
         // the root owns the focused element, so we forward it explicitly.
@@ -316,10 +363,17 @@ impl Root {
     }
 
     fn on_open(&mut self, _: &OpenBook, _window: &mut Window, cx: &mut Context<Self>) {
+        // Global shortcuts stay inert while the About overlay is modal.
+        if self.about_open {
+            return;
+        }
         self.request_open(cx);
     }
 
     fn on_file_drop(&mut self, paths: &ExternalPaths, _window: &mut Window, cx: &mut Context<Self>) {
+        if self.about_open {
+            return;
+        }
         match paths
             .paths()
             .iter()
@@ -390,9 +444,23 @@ impl Render for Root {
             }
         };
 
+        // Modal About overlay painted above whichever screen is active (landing or reader).
+        let about = if self.about_open {
+            Some(crate::ui::about::overlay(
+                crate::about::info(),
+                self.about_logo.clone(),
+                cx.listener(|this: &mut Root, _: &ClickEvent, _: &mut Window, cx| {
+                    this.close_about(cx)
+                }),
+            ))
+        } else {
+            None
+        };
+
         div()
             .id("root")
             .size_full()
+            .relative()
             .key_context("Root")
             .track_focus(&self.focus_handle)
             .on_action(cx.listener(Self::on_prev))
@@ -401,6 +469,7 @@ impl Render for Root {
             .on_action(cx.listener(Self::on_open))
             .on_drop(cx.listener(Self::on_file_drop))
             .child(content)
+            .children(about)
     }
 }
 
@@ -435,9 +504,11 @@ fn register_book_fonts(book: &crate::epub::Book, cx: &mut App) {
 
             crate::theme::set_font_aliases(aliases);
         }
-        Err(err) => {
+        // Only debug builds report the failure, so the binding is underscore-prefixed to stay
+        // warning-free in release builds, where the `eprintln!` is compiled out.
+        Err(_err) => {
             #[cfg(debug_assertions)]
-            eprintln!("embedded fonts add_fonts failed: {err:?}");
+            eprintln!("embedded fonts add_fonts failed: {_err:?}");
         }
     }
 }

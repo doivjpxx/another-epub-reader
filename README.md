@@ -13,6 +13,7 @@ font size and theme, and continue reading where you left off.
 - Font size from 14 to 30 px.
 - Keyboard shortcuts: `←`/`→` previous/next chapter, `Ctrl+O` open a book, `Esc` close popups.
 - Drag and drop an EPUB onto the window to open it.
+- About dialog showing the app version, build toolchain and direct dependencies.
 
 ## Requirements
 

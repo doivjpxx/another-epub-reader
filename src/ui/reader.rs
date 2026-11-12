@@ -987,6 +987,20 @@ impl Reader {
 
         let settings_button = self.settings_button(cx);
 
+        // About overlay trigger; Root owns the modal so it also covers the landing screen.
+        let about_button = components::icon_button(
+            "about-toggle",
+            icons::info_icon(theme.gear_icon()),
+            hover_background(theme),
+            cx.listener(|reader: &mut Reader, _event: &ClickEvent, _window, cx| {
+                // Close the popover here, not from `Root::show_about`: re-entering the reader's
+                // entity lease from its own handler would panic ("already being updated").
+                reader.settings_open = false;
+                let root = reader.root.clone();
+                let _ = root.update(cx, |root, cx| root.show_about(cx));
+            }),
+        );
+
         div()
             .id("reader-top-bar")
             .w_full()
@@ -999,6 +1013,7 @@ impl Reader {
             .bg(theme.content_bg())
             .child(toc_toggle)
             .child(settings_button)
+            .child(about_button)
             .child(div().flex_1())
             .child(close_button)
             .into_any_element()

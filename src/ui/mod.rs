@@ -1,3 +1,4 @@
+pub mod about;
 pub mod components;
 pub mod icons;
 pub mod landing;

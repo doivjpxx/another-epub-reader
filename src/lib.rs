@@ -1,3 +1,4 @@
+pub mod about;
 pub mod app;
 pub mod cli;
 pub mod epub;

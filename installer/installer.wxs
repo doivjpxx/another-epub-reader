@@ -22,16 +22,14 @@
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="ProgramFiles64Folder">
         <Directory Id="INSTALLFOLDER" Name="Another Epub Reader">
-          <Component Id="MainExecutable" Guid="53D6739F-250D-4F2D-BCE7-3C0FBC5C4FE8">
+          <!-- Win64="yes" is required: the package is built with Platform="x64" and the component
+               lives under ProgramFiles64Folder, so it must be flagged as a 64-bit component.
+               Without it, light.exe reports ICE80: "This 32BitComponent MainExecutable uses
+               64BitDirectory INSTALLFOLDER". -->
+          <Component Id="MainExecutable" Guid="53D6739F-250D-4F2D-BCE7-3C0FBC5C4FE8" Win64="yes">
             <File Id="AnotherEpubReaderExe"
                   Source="$(var.RepoRoot)\target\release\another-epub-reader.exe"
-                  KeyPath="yes">
-              <Shortcut Id="ApplicationStartMenuShortcut"
-                        Directory="ProgramMenuDir"
-                        Name="Another Epub Reader"
-                        WorkingDirectory="INSTALLFOLDER"
-                        Advertise="yes" />
-            </File>
+                  KeyPath="yes" />
             <File Id="ReadmeFile" Source="$(var.RepoRoot)\README.md" />
             <File Id="LicenseFile" Source="$(var.RepoRoot)\LICENSE" />
           </Component>
@@ -39,12 +37,33 @@
       </Directory>
 
       <Directory Id="ProgramMenuFolder">
-        <Directory Id="ProgramMenuDir" Name="Another Epub Reader" />
+        <Directory Id="ProgramMenuDir" Name="Another Epub Reader">
+          <!-- The Start Menu shortcut lives in its own component whose directory is
+               ProgramMenuDir. That component owns the folder, so it can declare RemoveFolder
+               (ICE64: a package-created directory in the user profile must be removed on
+               uninstall) and it has a registry keypath instead of a file keypath
+               (ICE43: non-advertised shortcuts must use a HKCU registry keypath). -->
+          <Component Id="ApplicationShortcut" Guid="1A835846-8D3B-4C06-83F7-78820886DA61">
+            <Shortcut Id="ApplicationStartMenuShortcut"
+                      Name="Another Epub Reader"
+                      Description="Another Epub Reader"
+                      Target="[INSTALLFOLDER]another-epub-reader.exe"
+                      WorkingDirectory="INSTALLFOLDER" />
+            <RemoveFolder Id="RemoveProgramMenuDir" On="uninstall" />
+            <RegistryValue Root="HKCU"
+                           Key="Software\AnotherEpubReader\Install"
+                           Name="ApplicationShortcut"
+                           Type="integer"
+                           Value="1"
+                           KeyPath="yes" />
+          </Component>
+        </Directory>
       </Directory>
     </Directory>
 
     <Feature Id="MainFeature" Title="Another Epub Reader" Level="1">
       <ComponentRef Id="MainExecutable" />
+      <ComponentRef Id="ApplicationShortcut" />
     </Feature>
 
     <UIRef Id="WixUI_Minimal" />
